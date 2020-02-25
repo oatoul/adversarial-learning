@@ -159,7 +159,7 @@ def main():
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     data_loader =  torch.utils.data.DataLoader(
-        torchvision.datasets.DatasetFolder('Assignment_1/data',
+        torchvision.datasets.DatasetFolder('data',
                                            loader= numpy_loader,
                                            extensions= '.npy',
                                            transform=transforms.Compose([transforms.ToTensor(),
