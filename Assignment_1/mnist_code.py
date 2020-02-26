@@ -252,11 +252,11 @@ def main():
 
     model = Net().to(device)
 
-    model.load_state_dict(torch.load(args.model_path))
+    model.load_state_dict(torch.load(args.model_path, map_location="cpu"))
 
     evaluate_model_for_accuracy(model, device, data_loader)
 
-    adv_images,image_names,class_labels = generate_adv_images(model, )
+    adv_images,image_names,class_labels = generate_adv_images()
     #Implement this method to generate adv images
     #statisfying constraints mentioned in the assignment discription
 
