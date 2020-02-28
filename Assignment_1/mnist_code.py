@@ -14,7 +14,6 @@ import sys
 import copy
 
 from Assignment_1.deepfool import deepfool
-import matplotlib.pyplot as plt
 
 
 class Net(nn.Module):
@@ -146,65 +145,56 @@ def generate_adv_images(mean, std, model, device, data_loader, kwargs):
     targeted_class_labels = []
     image_names = []
     # your code to generate adv_images goes here
-    #
-    # adv_images_all = []
-    # targeted_class_labels_all = []
-    # image_names_all = []
-    #
-    # cost = []
-    # given_dataset = []
-    # with torch.no_grad():
-    #     for data, target in data_loader:
-    #         data, target = data.to(device), target.to(device)
-    #         if len(given_dataset) == 0:
-    #             given_dataset = data.squeeze().detach().cpu().numpy()
-    #         else:
-    #             given_dataset = np.concatenate([given_dataset, data.squeeze().detach().cpu().numpy()],
-    #                                            axis=0)
-    #
-    # for data, target in data_loader:
-    #     data, target = data.to(device), target.to(device)
-    #     max_it = 50
-    #     for k in range(data.shape[0]):
-    #         image_ = data[k, :, :]
-    #
-    #         softmax_t, r, loop_i, label_orig, label_pert, pert_image = deepfool(image=image_, net=model.eval(),
-    #                                                                             max_iter=max_it)
-    #
-    #         if softmax_t > 0.8:
-    #             adv_images_all.append(pert_image)
-    #             targeted_class_labels_all.append(label_pert)
-    #             image_names_all.append(str(k) + "_" + str(label_orig))
-    #             cost.append(calculate_cost(pert_image, given_dataset))
-    #             # for t, m, s in zip(pert_image, mean, std):
-    #             #     t.mul_(s).add_(m)
-    #             # pert_image = clip_tensor(pert_image, 0, 1).squeeze().detach().cpu().numpy()
-    #             # pert_image = pert_image.squeeze().detach().cpu().numpy()
-    #             # pert_image = 255.0 * pert_image
-    #             #
-    #             # fpath = "adv_images/" + str(label_pert) + "/" + str(k)
-    #             # np.save(fpath, pert_image)
-    #         # if adv_images.__len__() >= 10:
-    #         #     break
-    #         print(str(k))
-    #
-    # save_data("adv_images_all", adv_images_all, image_names_all, targeted_class_labels_all, std, mean)
+
+    adv_images_all = []
+    targeted_class_labels_all = []
+    image_names_all = []
+
+    cost = []
+    given_dataset = []
+    with torch.no_grad():
+        for data, target in data_loader:
+            data, target = data.to(device), target.to(device)
+            if len(given_dataset) == 0:
+                given_dataset = data.squeeze().detach().cpu().numpy()
+            else:
+                given_dataset = np.concatenate([given_dataset, data.squeeze().detach().cpu().numpy()],
+                                               axis=0)
+
+    for data, target in data_loader:
+        data, target = data.to(device), target.to(device)
+        max_it = 100
+        for k in range(data.shape[0]):
+            image_ = data[k, :, :]
+
+            softmax_t, r, loop_i, label_orig, label_pert, pert_image = deepfool(image=image_, net=model.eval(),
+                                                                                max_iter=max_it)
+
+            if softmax_t > 0.8:
+                adv_images_all.append(pert_image)
+                targeted_class_labels_all.append(label_pert)
+                image_names_all.append(str(k) + "_" + str(label_orig))
+                cost.append(calculate_cost(pert_image, given_dataset))
+                # for t, m, s in zip(pert_image, mean, std):
+                #     t.mul_(s).add_(m)
+                # pert_image = clip_tensor(pert_image, 0, 1).squeeze().detach().cpu().numpy()
+                # pert_image = pert_image.squeeze().detach().cpu().numpy()
+                # pert_image = 255.0 * pert_image
+                #
+                # fpath = "adv_images/" + str(label_pert) + "/" + str(k)
+                # np.save(fpath, pert_image)
+            # if adv_images.__len__() >= 10:
+            #     break
+            print(str(k))
+
+    save_data("adv_images_all", adv_images_all, image_names_all, targeted_class_labels_all, std, mean)
 
 
 
-    # batch_size = adv_images_all.__len__()
-    batch_size = 857
+    batch_size = adv_images_all.__len__()
+    # batch_size = 857
 
     adv_images, image_names, targeted_class_labels = select_adv_images(mean,std,device,data_loader,batch_size,kwargs)
-
-    # for i in range(10):
-    #     ind_i = np.where(targeted_class_labels == i).ravel()
-    #     cost_i = cost[ind_i]
-    #     ind_max = np.argpartition(cost_i, -10)[-10:]
-    #     ind_i_max = ind_i[ind_max]
-    #     adv_images.append(adv_images_all[ind_i_max])
-    #     image_names.append(image_names_all[ind_i_max])
-    #     targeted_class_labels.append(targeted_class_labels_all[ind_i_max])
 
     return adv_images, image_names, targeted_class_labels
 
