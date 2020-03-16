@@ -23,6 +23,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 
 from load_model_37 import load_model
+import matplotlib.pyplot as plt
 
 
 class ImageFolderWithPaths(datasets.ImageFolder):
@@ -41,8 +42,9 @@ class ImageFolderWithPaths(datasets.ImageFolder):
         return tuple_with_path
 
 
-def predict(model, device, data_loader):
+def predict(model, device, data_loader, filename, mode):
     cnt = 0
+    outF = open(filename, mode)
     with torch.no_grad():
         for data, target, path in data_loader:
             data, target = data.to(device), target.to(device)
@@ -51,12 +53,28 @@ def predict(model, device, data_loader):
             pred = output.argmax(dim=1, keepdim=True)
 
             for k in range(len(pred)):
-                res = os.path.basename(path[k]).split('.')[0] + '#' + str(pred[k].item())
-                print(res)
+                res = str(os.path.basename(path[k]).split('.')[0]) + '#' + str(pred[k].item()) + '\n'
+                outF.write(res)
 
             cnt += len(data)
-            if cnt > 500:
-                break
+
+    print(str(cnt) + " records written to " + filename)
+    outF.close()
+
+
+def create_output(device, data_loader, filename):
+    cnt = 0
+    outF = open(filename, "w")
+    with torch.no_grad():
+        for data, target, path in data_loader:
+            data, target = data.to(device), target.to(device)
+            for k in range(len(target)):
+                res = str(os.path.basename(path[k]).split('.')[0]) + '#' + str(target[k].item()) + '\n'
+                outF.write(res)
+                cnt += 1
+
+    print(str(cnt) + " records writen to " + str(filename))
+    outF.close()
 
 
 def evaluate_model_for_accuracy(model, device, data_loader):
@@ -93,6 +111,8 @@ clean_data_loader = torch.utils.data.DataLoader(
     ImageFolderWithPaths(clean_data_dir, transforms.Compose([
         transforms.Resize(128),
         transforms.CenterCrop(128),
+        transforms.RandomHorizontalFlip(p=0.6),
+        transforms.RandomVerticalFlip(p=0.6),
         transforms.ToTensor(),
         normalize, ])),
     batch_size=256)
@@ -101,6 +121,8 @@ adv_data_loader = torch.utils.data.DataLoader(
     ImageFolderWithPaths(adv_data_dir, transforms.Compose([
         transforms.Resize(128),
         transforms.CenterCrop(128),
+        transforms.RandomHorizontalFlip(p=0.6),
+        transforms.RandomVerticalFlip(p=0.6),
         transforms.ToTensor(),
         normalize, ])),
     batch_size=256)
@@ -111,4 +133,9 @@ adv_data_loader = torch.utils.data.DataLoader(
 # print("Adv data accuracy:")
 # evaluate_model_for_accuracy(model, device, adv_data_loader)
 
-predict(model, device, clean_data_loader)
+# create_output(device, clean_data_loader, "clean.txt")
+# create_output(device, adv_data_loader, "adv.txt")
+
+predict(model, device, clean_data_loader, "result.txt", "w")
+predict(model, device, adv_data_loader, "result.txt", "a")
+
