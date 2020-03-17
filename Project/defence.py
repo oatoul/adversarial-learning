@@ -26,6 +26,48 @@ from load_model_37 import load_model
 import matplotlib.pyplot as plt
 
 
+class RandomPad(object):
+    """Crop randomly the image in a sample.
+
+    Args:
+        output_size (tuple or int): Desired output size. If int, square crop
+            is made.
+    """
+
+    def __init__(self, pad_range, fill = 0):
+        assert isinstance(pad_range, (int, tuple))
+        if isinstance(fill, int):
+            self.fill = fill
+        if isinstance(pad_range, int):
+            self.pad_range = (pad_range, pad_range)
+        else:
+            assert len(pad_range) == 2
+            self.pad_range = pad_range
+
+    def __call__(self, sample):
+        # image, landmarks = sample['image'], sample['landmarks']
+
+        # h, w = image.shape[:2]
+        fill = self.fill
+        min, max = self.pad_range
+
+        pad = np.random.randint(min, max)
+
+        top = np.random.randint(0, pad + 1)
+        left = np.random.randint(0, pad + 1)
+        bottom = pad - top
+        right = pad - left
+
+        tf = transforms.Compose([
+            transforms.Pad(padding=(left, top, right, bottom), fill=fill, padding_mode='constant')
+            ])
+
+        # landmarks = landmarks + [pad, pad]
+
+        # return {'image': image, 'landmarks': landmarks}
+        return tf(sample)
+
+
 class ImageFolderWithPaths(datasets.ImageFolder):
     """Custom dataset that includes image file paths. Extends
     torchvision.datasets.ImageFolder
@@ -111,8 +153,10 @@ clean_data_loader = torch.utils.data.DataLoader(
     ImageFolderWithPaths(clean_data_dir, transforms.Compose([
         transforms.Resize(128),
         transforms.CenterCrop(128),
-        transforms.RandomHorizontalFlip(p=0.6),
-        transforms.RandomVerticalFlip(p=0.6),
+        RandomPad(pad_range=(3, 14), fill=0),
+        transforms.Resize(128),
+        transforms.RandomHorizontalFlip(p=0.71),
+        transforms.RandomVerticalFlip(p=0.71),
         transforms.ToTensor(),
         normalize, ])),
     batch_size=256)
@@ -121,8 +165,10 @@ adv_data_loader = torch.utils.data.DataLoader(
     ImageFolderWithPaths(adv_data_dir, transforms.Compose([
         transforms.Resize(128),
         transforms.CenterCrop(128),
-        transforms.RandomHorizontalFlip(p=0.6),
-        transforms.RandomVerticalFlip(p=0.6),
+        RandomPad(pad_range=(3, 14), fill=0),
+        transforms.Resize(128),
+        transforms.RandomHorizontalFlip(p=0.71),
+        transforms.RandomVerticalFlip(p=0.71),
         transforms.ToTensor(),
         normalize, ])),
     batch_size=256)
@@ -136,6 +182,10 @@ adv_data_loader = torch.utils.data.DataLoader(
 # create_output(device, clean_data_loader, "clean.txt")
 # create_output(device, adv_data_loader, "adv.txt")
 
-predict(model, device, clean_data_loader, "result.txt", "w")
-predict(model, device, adv_data_loader, "result.txt", "a")
+# predict(model, device, clean_data_loader, "result.txt", "w")
+# predict(model, device, adv_data_loader, "result.txt", "a")
+
+predict(model, device, clean_data_loader, "result_RandomPad.txt", "w")
+predict(model, device, adv_data_loader, "result_RandomPad.txt", "a")
+
 
