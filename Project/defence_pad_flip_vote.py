@@ -119,6 +119,32 @@ def create_output(device, data_loader, filename):
     outF.close()
 
 
+def evaluate_with_voting(model, device, data_loader, vote):
+    correct = 0
+    cnt = 0
+    pred_vote = 0
+    label = 0
+    for k in range(vote):
+        for data, target, path in data_loader:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            pred_cur = output.argmax(dim=1, keepdim=True)
+            if isinstance(pred_vote, int):
+                pred_vote = F.one_hot(pred_cur, num_classes=4)
+            else:
+                pred_vote += F.one_hot(pred_cur, num_classes=4)
+            if isinstance(label, int):
+                label = target
+
+    pred_res = pred_vote.squeeze().argmax(dim=1, keepdim=True)
+    cnt += len(label)
+    correct += pred_res.eq(label.view_as(pred_res)).sum().item()
+
+    print('\n{}/{} ({:.0f}%)'.format(
+        correct, cnt,
+        100. * correct / cnt))
+
+
 def evaluate_model_for_accuracy(model, device, data_loader):
     correct = 0
     cnt = 0
@@ -129,14 +155,14 @@ def evaluate_model_for_accuracy(model, device, data_loader):
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
             cnt += len(data)
-            if cnt > 500:
-                break
+            # if cnt > 500:
+            #     break
 
     # print('\n Accuracy: {}/{} ({:.0f}%)\n'.format(
     #     correct, len(data_loader.dataset),
     #     100. * correct / len(data_loader.dataset)))
 
-    print('\n Accuracy: {}/{} ({:.0f}%)\n'.format(
+    print('\n{}/{} ({:.0f}%)'.format(
         correct, cnt,
         100. * correct / cnt))
 
@@ -146,37 +172,69 @@ model = load_model('Materials/model/model.pt', 'cpu')
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
 
-clean_data_dir = 'Materials/data/clean_images'
-adv_data_dir = 'Materials/data/adv_images'
+clean_data_dir = 'Materials/data/subset/clean_images'
+adv_data_dir = 'Materials/data/subset/adv_images'
+
+
+# resampling filters
+NEAREST = NONE = 0
+BOX = 4
+BILINEAR = LINEAR = 2
+HAMMING = 5
+BICUBIC = CUBIC = 3
+LANCZOS = ANTIALIAS = 1
+
+
+pad_range_min = 2
+pad_range_max = 10
+fill = -1
+vote = 30
+h_flip = 0.5
+v_flip = 1
+interp = HAMMING
+
+print("Pad " + str(pad_range_min) + " ~ " + str(pad_range_max) + " with fill = " + str(fill))
+print("vote " + str(vote) + " h_flip = " + str(h_flip) + " with v_flip = " + str(v_flip) + " interpolation " + str(interp))
 
 clean_data_loader = torch.utils.data.DataLoader(
     ImageFolderWithPaths(clean_data_dir, transforms.Compose([
         transforms.Resize(128),
         transforms.CenterCrop(128),
-        RandomPad(pad_range=(3, 14), fill=0),
-        transforms.Resize(128),
-        transforms.RandomHorizontalFlip(p=0.71),
-        transforms.RandomVerticalFlip(p=0.71),
+        RandomPad(pad_range=(pad_range_min, pad_range_max), fill=fill),
+        transforms.Resize(size=128, interpolation=interp),
+        transforms.RandomHorizontalFlip(p=h_flip),
+        transforms.RandomVerticalFlip(p=v_flip),
         transforms.ToTensor(),
         normalize, ])),
-    batch_size=256)
+    batch_size=400)
 
 adv_data_loader = torch.utils.data.DataLoader(
     ImageFolderWithPaths(adv_data_dir, transforms.Compose([
         transforms.Resize(128),
         transforms.CenterCrop(128),
-        RandomPad(pad_range=(3, 14), fill=0),
-        transforms.Resize(128),
-        transforms.RandomHorizontalFlip(p=0.71),
-        transforms.RandomVerticalFlip(p=0.71),
+        RandomPad(pad_range=(pad_range_min, pad_range_max), fill=fill),
+        transforms.Resize(size=128, interpolation=interp),
+        transforms.RandomHorizontalFlip(p=h_flip),
+        transforms.RandomVerticalFlip(p=v_flip),
         transforms.ToTensor(),
         normalize, ])),
-    batch_size=256)
+    batch_size=400)
+
+print("Clean data accuracy:")
+evaluate_with_voting(model, device, clean_data_loader, vote)
+
+print("Adv data accuracy:")
+evaluate_with_voting(model, device, adv_data_loader, vote)
+
 
 # print("Clean data accuracy:")
 # evaluate_model_for_accuracy(model, device, clean_data_loader)
+# evaluate_model_for_accuracy(model, device, clean_data_loader)
+# evaluate_model_for_accuracy(model, device, clean_data_loader)
 #
 # print("Adv data accuracy:")
+# evaluate_model_for_accuracy(model, device, adv_data_loader)
+# evaluate_model_for_accuracy(model, device, adv_data_loader)
 # evaluate_model_for_accuracy(model, device, adv_data_loader)
 
 # create_output(device, clean_data_loader, "clean.txt")
@@ -185,7 +243,7 @@ adv_data_loader = torch.utils.data.DataLoader(
 # predict(model, device, clean_data_loader, "result.txt", "w")
 # predict(model, device, adv_data_loader, "result.txt", "a")
 
-predict(model, device, clean_data_loader, "result_RandomPad.txt", "w")
-predict(model, device, adv_data_loader, "result_RandomPad.txt", "a")
+# predict(model, device, clean_data_loader, "result_RandomPad.txt", "w")
+# predict(model, device, adv_data_loader, "result_RandomPad.txt", "a")
 
 
